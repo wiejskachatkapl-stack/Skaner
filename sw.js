@@ -1,8 +1,5 @@
-const CACHE_NAME = "skaner-produktow-v1002";
+const CACHE_NAME = "skaner-produktow-v1003";
 const CORE_ASSETS = [
-  "./",
-  "./index.html",
-  "./products.html",
   "./style.css",
   "./shared.js",
   "./app.js",
@@ -24,26 +21,36 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(keys.map(key => {
       if (key !== CACHE_NAME) return caches.delete(key);
-    })))
+    }))).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", event => {
   const request = event.request;
+  const url = new URL(request.url);
 
-  if (request.url.includes("openfoodfacts.org")) {
-    event.respondWith(fetch(request).catch(() => new Response(JSON.stringify({ status: 0 }), {
-      headers: { "Content-Type": "application/json" }
-    }))));
+  if (url.hostname.includes("openfoodfacts.org") || url.hostname.includes("unpkg.com")) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // Dla stron HTML zawsze najpierw internet, żeby GitHub Pages nie siedział w starej wersji.
+  if (request.mode === "navigate" || request.destination === "document") {
+    event.respondWith(
+      fetch(request, { cache: "no-store" })
+        .then(response => response)
+        .catch(() => caches.match("./index.html"))
+    );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-      return response;
-    }).catch(() => caches.match("./index.html")))
+    caches.match(request).then(cached => {
+      return cached || fetch(request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        return response;
+      });
+    })
   );
 });

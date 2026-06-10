@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reset PWA — Skaner Produktów</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f2ea;
+      color: #203126;
+      padding: 20px;
+    }
+    .box {
+      width: min(680px, 100%);
+      background: white;
+      border-radius: 28px;
+      padding: 28px;
+      box-shadow: 0 20px 50px rgba(47,76,58,.14);
+      border: 1px solid #e2dfd4;
+    }
+    h1 { margin-top: 0; }
+    .log {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 16px;
+      background: #f6f2ea;
+      color: #5f6d64;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    a, button {
+      display: inline-flex;
+      margin-top: 16px;
+      padding: 14px 18px;
+      border-radius: 16px;
+      background: #2d7f57;
+      color: white;
+      font-weight: 800;
+      border: 0;
+      text-decoration: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main class="box">
+    <h1>Resetuję starą wersję PWA</h1>
+    <p>Ten ekran usuwa stare cache i starego service workera. Po chwili aplikacja otworzy się od nowa.</p>
+    <div id="log" class="log">Start...</div>
+    <button id="goBtn" hidden>Otwórz świeżą wersję</button>
+  </main>
+
+  <script>
+    const log = document.getElementById("log");
+    const goBtn = document.getElementById("goBtn");
+
+    function add(message) {
+      log.textContent += "\\n" + message;
+    }
+
+    async function resetPwa() {
+      try {
+        add("1. Szukam service workerów...");
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          add("Znaleziono: " + regs.length);
+          for (const reg of regs) {
+            await reg.unregister();
+          }
+          add("Service workery usunięte.");
+        } else {
+          add("Brak obsługi service worker.");
+        }
+
+        add("2. Czyszczę cache...");
+        if ("caches" in window) {
+          const names = await caches.keys();
+          for (const name of names) {
+            await caches.delete(name);
+          }
+          add("Cache usunięte: " + names.length);
+        } else {
+          add("Brak cache API.");
+        }
+
+        add("3. Gotowe. Otwieram świeżą wersję v1003...");
+        goBtn.hidden = false;
+        goBtn.onclick = () => {
+          location.href = "./index.html?fresh=" + Date.now();
+        };
+
+        setTimeout(() => {
+          location.href = "./index.html?fresh=" + Date.now();
+        }, 1800);
+      } catch (err) {
+        add("Błąd: " + err.message);
+        goBtn.hidden = false;
+      }
+    }
+
+    resetPwa();
+  </script>
+</body>
+</html>
