@@ -21,6 +21,7 @@ const barcodeFile = document.getElementById("barcodeFile");
 
 let html5QrCode = null;
 let isScanning = false;
+let availableCameras = [];
 let currentTrack = null;
 let torchEnabled = false;
 let currentProductForAnalysis = null;
@@ -121,6 +122,13 @@ async function startScanner() {
   torchBtn.classList.add("hidden");
   setStatus("Uruchamiam aparat...");
 
+  try {
+    availableCameras = await Html5Qrcode.getCameras();
+  } catch (error) {
+    console.warn("Nie udało się pobrać listy kamer", error);
+    availableCameras = [];
+  }
+
   html5QrCode = new Html5Qrcode("reader", {
     formatsToSupport: [
       Html5QrcodeSupportedFormats.EAN_13,
@@ -159,26 +167,50 @@ async function startScanner() {
     try {
       await html5QrCode.start(getCameraConfig(), config, onScanSuccess, () => {});
     } catch (firstError) {
-      console.warn("Nie udało się uruchomić exact environment, próbuję environment fallback", firstError);
-      await html5QrCode.start(getFallbackCameraConfig(), config, onScanSuccess, () => {});
+      console.warn("Nie udało się uruchomić wybranej tylnej kamery, próbuję environment fallback", firstError);
+      try {
+        await html5QrCode.start(getFallbackCameraConfig(), config, onScanSuccess, () => {});
+      } catch (secondError) {
+        console.warn("Environment fallback też nie zadziałał, próbuję dowolną dostępną kamerę", secondError);
+        await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
+      }
     }
     isScanning = true;
-    setStatus("Skaner działa na tylnej kamerze. Powoli przybliż/oddal kod, aż będzie ostry i dobrze oświetlony.");
+    setStatus("Skaner działa. Aplikacja automatycznie próbuje użyć tylnej kamery. Powoli przybliż/oddal kod, aż będzie ostry.");
     prepareTorchButton();
   } catch (error) {
     console.error(error);
     await stopScanner(false);
-    setStatus("Nie udało się uruchomić tylnej kamery. Użyj telefonu z tylną kamerą, HTTPS i pozwól stronie na dostęp do aparatu albo wpisz kod ręcznie.", true);
+    setStatus("Nie udało się uruchomić kamery. Sprawdź zgodę na aparat, HTTPS oraz czy inna aplikacja nie używa kamery.", true);
   }
 }
 
 function getCameraConfig() {
-  // Wymuszamy tylną kamerę telefonu. Bez przycisku zmiany kamery.
-  return { facingMode: { exact: "environment" } };
+  // Bez przycisku zmiany kamery: aplikacja sama próbuje wybrać tylną kamerę.
+  if (Array.isArray(availableCameras) && availableCameras.length) {
+    const rearCamera = availableCameras.find(camera => {
+      const label = String(camera.label || "").toLowerCase();
+      return label.includes("back") ||
+             label.includes("rear") ||
+             label.includes("environment") ||
+             label.includes("tył") ||
+             label.includes("tylna") ||
+             label.includes("kamera 0");
+    });
+
+    if (rearCamera?.id) return rearCamera.id;
+
+    // Jeżeli telefon nie ujawnia nazw kamer przed zgodą, zwykle ostatnia kamera jest tylna.
+    const lastCamera = availableCameras[availableCameras.length - 1];
+    if (lastCamera?.id) return lastCamera.id;
+  }
+
+  return { facingMode: "environment" };
 }
 
 function getFallbackCameraConfig() {
-  // Fallback dla przeglądarek, które nie obsługują exact.
+  // Awaryjnie pozwalamy przeglądarce wybrać kamerę, żeby obraz w ogóle się pojawił.
+  // Nadal nie pokazujemy przycisku zmiany kamery.
   return { facingMode: "environment" };
 }
 
