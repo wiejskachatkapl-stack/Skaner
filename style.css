@@ -738,7 +738,7 @@ body.modal-open { overflow: hidden; }
 }
 
 
-/* v1008: kamera jak w działającej wersji, ale bez widocznego przycisku zmiany kamery */
+/* v1009: bez przycisku zmiany kamery, start bezpośrednio na tylnej kamerze */
 #switchCameraBtn,
 .camera-switch-disabled {
   display: none !important;

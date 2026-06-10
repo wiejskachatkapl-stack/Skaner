@@ -1,4 +1,4 @@
-const VERSION = "SKANER PRODUKTÓW v1008";
+const VERSION = "SKANER PRODUKTÓW v1009";
 const API_BASE = "https://world.openfoodfacts.org/api/v2/product/";
 const API_FIELDS = [
   "code",
