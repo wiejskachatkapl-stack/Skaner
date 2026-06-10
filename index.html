@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#1f8a4c" />
+  <meta name="theme-color" content="#2d7f57" />
   <title>Skaner Produktów KuchnJA</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
@@ -11,54 +11,98 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="app-shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">KuchnJA</p>
-        <h1>Skaner produktów</h1>
-        <p class="lead">Zeskanuj kod kreskowy albo wpisz EAN ręcznie i sprawdź wartości odżywcze produktu.</p>
-      </div>
-      <div class="score-badge" id="connectionBadge">ONLINE</div>
+  <main class="site-shell">
+    <header class="topbar glass-card">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">K</span>
+        <span>
+          <strong>KuchnJA</strong>
+          <small>Skaner produktów</small>
+        </span>
+      </a>
+      <nav class="topnav">
+        <a href="index.html" class="nav-link active">Skaner</a>
+        <a href="products.html" class="nav-link">Spiżarnia</a>
+      </nav>
     </header>
 
-    <section class="card controls-card">
-      <button id="startScanBtn" class="primary-btn">Skanuj kod aparatem</button>
-      <button id="stopScanBtn" class="secondary-btn hidden">Zatrzymaj skaner</button>
-
-      <div class="scan-options">
-        <button id="switchCameraBtn" class="small-btn hidden">Zmień kamerę</button>
-        <button id="torchBtn" class="small-btn hidden">Latarka</button>
-      </div>
-
-      <div id="readerWrap" class="reader-wrap hidden">
-        <div id="reader"></div>
-        <p class="hint">Ustaw kod kreskowy blisko kamery, ale tak aby był ostry. Na komputerze kamera bywa słabsza — wtedy wpisz kod ręcznie albo użyj zdjęcia kodu.</p>
-      </div>
-
-      <div class="file-box">
-        <label for="barcodeFile">Nie łapie kamerą? Wgraj zdjęcie kodu</label>
-        <input id="barcodeFile" type="file" accept="image/*" />
-      </div>
-
-      <div class="manual-box">
-        <label for="barcodeInput">Kod kreskowy / EAN</label>
-        <div class="input-row">
-          <input id="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="np. 5901234123457" />
-          <button id="searchBtn" class="secondary-btn">Sprawdź</button>
+    <section class="hero hero-main">
+      <div class="hero-copy">
+        <p class="eyebrow">PWA START</p>
+        <h1>Zeskanuj produkt i zobacz jego wartości odżywcze</h1>
+        <p class="lead">Pobieramy zdjęcie, nazwę, markę i wartości odżywcze produktu. Zeskanowane produkty odkładają się później na osobnej podstronie w stylu KuchnJA.</p>
+        <div class="hero-actions">
+          <button id="startScanBtn" class="primary-btn">Skanuj kod aparatem</button>
+          <a href="products.html" class="ghost-btn">Otwórz spiżarnię</a>
         </div>
       </div>
+      <div class="hero-art-wrap glass-card">
+        <img src="assets/hero-market.svg" alt="Ilustracja warzyw i produktów" class="hero-art" />
+        <div class="hero-badge" id="connectionBadge">ONLINE</div>
+      </div>
+    </section>
 
-      <p id="status" class="status">Gotowe do skanowania.</p>
+    <section class="grid-two">
+      <section class="card controls-card">
+        <div class="card-head">
+          <div>
+            <p class="eyebrow">SKANOWANIE</p>
+            <h2>Wyszukiwanie produktu</h2>
+          </div>
+          <button id="stopScanBtn" class="secondary-btn hidden">Zatrzymaj skaner</button>
+        </div>
+
+        <div class="scan-options">
+          <button id="switchCameraBtn" class="small-btn hidden">Zmień kamerę</button>
+          <button id="torchBtn" class="small-btn hidden">Latarka</button>
+        </div>
+
+        <div id="readerWrap" class="reader-wrap hidden">
+          <div id="reader"></div>
+          <p class="hint">Ustaw kod kreskowy centralnie w ramce. Najwygodniej skanować telefonem. Na komputerze możesz też wgrać zdjęcie kodu albo użyć pola EAN.</p>
+        </div>
+
+        <div class="file-box">
+          <label for="barcodeFile">Nie łapie kamerą? Wgraj zdjęcie kodu</label>
+          <input id="barcodeFile" type="file" accept="image/*" />
+        </div>
+
+        <div class="manual-box">
+          <label for="barcodeInput">Kod kreskowy / EAN</label>
+          <div class="input-row">
+            <input id="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="np. 5901234123457" />
+            <button id="searchBtn" class="secondary-btn">Sprawdź</button>
+          </div>
+        </div>
+
+        <p id="status" class="status">Gotowe do skanowania.</p>
+      </section>
+
+      <aside class="card pantry-preview">
+        <p class="eyebrow">KUCHNJA</p>
+        <h2>Twoja mini spiżarnia</h2>
+        <p class="muted">Każdy znaleziony produkt zapisujemy lokalnie z jego zdjęciem. Potem możesz przeglądać je na osobnej podstronie jak katalog produktów.</p>
+        <ul class="feature-list">
+          <li>zdjęcia produktów z Open Food Facts</li>
+          <li>ładne kafelki produktów</li>
+          <li>wyszukiwanie po nazwie lub marce</li>
+          <li>lokalna historia skanów</li>
+        </ul>
+        <a href="products.html" class="primary-btn inline-action">Przejdź do spiżarni</a>
+      </aside>
     </section>
 
     <section id="resultCard" class="card result-card hidden">
       <div class="product-top">
         <img id="productImage" alt="Zdjęcie produktu" class="product-image hidden" />
-        <div>
+        <div class="product-meta">
           <p class="eyebrow">Produkt</p>
           <h2 id="productName">-</h2>
           <p id="productBrand" class="muted"></p>
           <p id="productCode" class="code-line"></p>
+          <div class="result-actions">
+            <a href="products.html" class="small-ghost-btn">Pokaż w spiżarni</a>
+          </div>
         </div>
       </div>
 
@@ -76,18 +120,22 @@
 
     <section class="card history-card">
       <div class="section-title-row">
-        <h2>Ostatnie skany</h2>
+        <div>
+          <p class="eyebrow">OSTATNIE</p>
+          <h2>Ostatnie skany</h2>
+        </div>
         <button id="clearHistoryBtn" class="small-btn">Wyczyść</button>
       </div>
       <div id="historyList" class="history-list empty">Brak historii.</div>
     </section>
 
     <footer>
-      SKANER PRODUKTÓW v1001
+      SKANER PRODUKTÓW v1002
     </footer>
   </main>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="shared.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

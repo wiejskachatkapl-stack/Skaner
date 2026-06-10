@@ -1,10 +1,16 @@
-const CACHE_NAME = "skaner-produktow-v1001";
+const CACHE_NAME = "skaner-produktow-v1002";
 const CORE_ASSETS = [
   "./",
   "./index.html",
+  "./products.html",
   "./style.css",
+  "./shared.js",
   "./app.js",
+  "./products.js",
   "./manifest.json",
+  "./assets/hero-market.svg",
+  "./assets/empty-products.svg",
+  "./assets/product-placeholder.svg",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
@@ -29,7 +35,7 @@ self.addEventListener("fetch", event => {
   if (request.url.includes("openfoodfacts.org")) {
     event.respondWith(fetch(request).catch(() => new Response(JSON.stringify({ status: 0 }), {
       headers: { "Content-Type": "application/json" }
-    })));
+    }))));
     return;
   }
 
