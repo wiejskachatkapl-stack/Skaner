@@ -1,4 +1,4 @@
-const CACHE_NAME = "skaner-produktow-v1005";
+const CACHE_NAME = "skaner-produktow-v1006";
 const CORE_ASSETS = [
   "./style.css",
   "./shared.js",
