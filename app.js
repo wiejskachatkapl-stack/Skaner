@@ -26,6 +26,7 @@ let availableCameras = [];
 let currentCameraIndex = 0;
 let currentTrack = null;
 let torchEnabled = false;
+let currentProductForAnalysis = null;
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -65,6 +66,7 @@ async function fetchProduct(barcode) {
     }
 
     const storedProduct = buildStoredProduct(data.product, cleanCode);
+    currentProductForAnalysis = storedProduct;
     showProduct(storedProduct);
     saveToHistory(storedProduct);
     saveToCatalog(storedProduct);
@@ -101,8 +103,11 @@ function showProduct(item) {
 
   ingredientsText.textContent = item.ingredients || "Brak danych.";
   allergensText.textContent = item.allergens || "Brak danych.";
-  ratingBox.className = `rating-box ${item.rating.className}`;
-  ratingBox.textContent = `Ocena uproszczona: ${item.rating.points}/10 — ${item.rating.label}${item.rating.notes.length ? " — " + item.rating.notes.join(", ") : ""}`;
+  ratingBox.className = `rating-box rating-click ${item.rating.className}`;
+  ratingBox.setAttribute("role", "button");
+  ratingBox.setAttribute("tabindex", "0");
+  ratingBox.title = "Kliknij, aby zobaczyć szczegółową ocenę";
+  ratingBox.textContent = `Ocena uproszczona: ${item.rating.points}/10 — ${item.rating.label}. Kliknij po szczegóły.`;
   resultCard.classList.remove("hidden");
 }
 
@@ -309,6 +314,17 @@ clearHistoryBtn.addEventListener("click", () => {
   localStorage.removeItem(HISTORY_KEY);
   renderHistory();
 });
+
+ratingBox.addEventListener("click", () => {
+  if (currentProductForAnalysis) openAnalysisModal(currentProductForAnalysis);
+});
+ratingBox.addEventListener("keydown", event => {
+  if ((event.key === "Enter" || event.key === " ") && currentProductForAnalysis) {
+    event.preventDefault();
+    openAnalysisModal(currentProductForAnalysis);
+  }
+});
+
 window.addEventListener("online", updateConnectionBadge);
 window.addEventListener("offline", updateConnectionBadge);
 

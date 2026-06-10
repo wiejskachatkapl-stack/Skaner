@@ -3,47 +3,46 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#2d7f57" />
-  <title>Spiżarnia KuchnJA</title>
+  <meta name="theme-color" content="#21120d" />
+  <title>Baza Produktów KuchnJA</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="site-shell">
+  <main class="site-shell kitchen-style">
     <header class="topbar glass-card">
       <a class="brand" href="index.html">
-        <span class="brand-mark">K</span>
-        <span>
-          <strong>KuchnJA</strong>
-          <small>Spiżarnia produktów</small>
-        </span>
+        <span class="brand-text"><strong>Kuchn<span>Ja</span>.pl</strong><small>baza skanowanych produktów</small></span>
       </a>
       <nav class="topnav">
         <a href="index.html" class="nav-link">Skaner</a>
-        <a href="products.html" class="nav-link active">Spiżarnia</a>
+        <a href="products.html" class="nav-link active">Baza produktów</a>
+        <a href="products.html" class="nav-link">Oceny</a>
+        <a href="products.html" class="nav-link">Spiżarnia</a>
       </nav>
     </header>
 
-    <section class="hero hero-pantry">
-      <div class="hero-copy">
-        <p class="eyebrow">PODSTRONA PRODUKTÓW</p>
-        <h1>Twoja spiżarnia w stylu KuchnJA</h1>
-        <p class="lead">Tutaj wpadają produkty, które skanowałeś. Każdy kafelek pokazuje zdjęcie, markę, ocenę i podstawowe wartości odżywcze.</p>
+    <section class="hero hero-pantry hero-kuchnja">
+      <div class="hero-copy hero-copy-dark">
+        <p class="eyebrow">BAZA SKANÓW</p>
+        <h1>Twoje skanowane produkty w estetyce <span>KuchnJA</span></h1>
+        <p class="lead">Tutaj odkładają się produkty, które skanowałeś. Każda karta pokazuje zdjęcie produktu, podstawowe wartości odżywcze oraz klikane oceny szczegółowe.</p>
         <div class="hero-actions">
           <a href="index.html" class="primary-btn inline-action">Wróć do skanera</a>
         </div>
       </div>
-      <div class="hero-art-wrap glass-card">
-        <img src="assets/empty-products.svg" alt="Ilustracja kuchennej spiżarni" class="hero-art" />
+      <div class="hero-art-wrap hero-art-photo glass-card">
+        <div class="hero-photo-overlay"></div>
+        <img src="assets/empty-products.svg" alt="Ilustracja bazy produktów" class="hero-art" />
       </div>
     </section>
 
-    <section class="stats-row">
+    <section class="stats-row dark-stats">
       <article class="stat-card">
         <span class="stat-number" id="totalProducts">0</span>
-        <span class="stat-label">produktów w spiżarni</span>
+        <span class="stat-label">produktów w bazie</span>
       </article>
       <article class="stat-card">
         <span class="stat-number" id="goodProducts">0</span>
@@ -55,29 +54,29 @@
       </article>
     </section>
 
-    <section class="card pantry-toolbar">
+    <section class="card pantry-toolbar toolbar-dark">
       <div class="toolbar-wrap">
         <div class="search-field">
-          <label for="productSearch">Szukaj w spiżarni</label>
-          <input id="productSearch" type="search" placeholder="np. jogurt, mleko, biedronka" />
+          <label for="productSearch">Szukaj w bazie produktów</label>
+          <input id="productSearch" type="search" placeholder="np. jogurt, mleko, cola, biedronka" />
         </div>
-        <button id="clearCatalogBtn" class="secondary-btn">Wyczyść spiżarnię</button>
+        <button id="clearCatalogBtn" class="secondary-btn">Wyczyść bazę</button>
       </div>
     </section>
 
     <section class="featured-row" id="featuredRow"></section>
 
-    <section id="productsGrid" class="products-grid"></section>
+    <section id="productsGrid" class="products-grid products-grid-kuchnja"></section>
 
     <section id="emptyState" class="card empty-state hidden">
       <img src="assets/empty-products.svg" alt="Brak produktów" class="empty-illustration" />
-      <h2>Na razie spiżarnia jest pusta</h2>
-      <p class="muted">Zeskanuj pierwszy produkt na stronie głównej, a pojawi się tutaj jako ładny kafelek ze zdjęciem.</p>
+      <h2>Na razie baza produktów jest pusta</h2>
+      <p class="muted">Zeskanuj pierwszy produkt na stronie głównej, a pojawi się tutaj jako karta produktu.</p>
       <a href="index.html" class="primary-btn inline-action">Przejdź do skanera</a>
     </section>
 
     <footer>
-      SKANER PRODUKTÓW v1003
+      SKANER PRODUKTÓW v1005
     </footer>
   </main>
 

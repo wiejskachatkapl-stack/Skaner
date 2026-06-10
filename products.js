@@ -8,6 +8,7 @@ const productSearch = document.getElementById("productSearch");
 const clearCatalogBtn = document.getElementById("clearCatalogBtn");
 
 let currentItems = [];
+let renderedItems = [];
 
 function renderStats(items) {
   totalProductsEl.textContent = items.length;
@@ -30,11 +31,13 @@ function renderFeatured(items) {
         <p class="eyebrow">OSTATNIO ZESKANOWANE</p>
         <h2>${escapeHtml(latest.name)}</h2>
         <p class="muted">${escapeHtml(latest.brand || 'Marka nieznana')} · Kod ${escapeHtml(latest.code)}</p>
-        <div class="rating-box ${latest.rating?.className || 'rating-mid'}">${escapeHtml(ratingText(latest.rating || { points: 5, label: 'Średni wybór' }))}</div>
+        <button class="rating-box rating-click ${latest.rating?.className || 'rating-mid'}" id="featuredRatingBtn" type="button">${escapeHtml(ratingText(latest.rating || { points: 5, label: 'Średni wybór' }))}</button>
         <div class="mini-grid spacious">${nutritionPreviewHtml(latest.nutriments || {})}</div>
       </div>
     </section>
   `;
+  const featuredBtn = document.getElementById("featuredRatingBtn");
+  if (featuredBtn) featuredBtn.addEventListener("click", () => openAnalysisModal(latest));
 }
 
 function renderCatalog(items) {
@@ -48,7 +51,14 @@ function renderCatalog(items) {
   }
 
   emptyState.classList.add("hidden");
+  renderedItems = items;
   productsGrid.innerHTML = items.map(productCardTemplate).join("");
+  productsGrid.querySelectorAll("[data-analysis-code]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const product = renderedItems.find(item => item.code === btn.dataset.analysisCode);
+      if (product) openAnalysisModal(product);
+    });
+  });
 }
 
 function applyFilter() {
@@ -66,11 +76,17 @@ function applyFilter() {
 
 function loadCatalog() {
   const rawCatalog = getCatalog();
-  currentItems = rawCatalog.map(item => ({
-    ...item,
-    image: item.image || PLACEHOLDER_IMAGE,
-    rating: item.rating || { points: 5, label: "Średni wybór", className: "rating-mid", notes: [] }
-  }));
+  currentItems = rawCatalog.map(item => {
+    const rebuilt = {
+      ...item,
+      image: item.image || PLACEHOLDER_IMAGE,
+      rating: item.rating || null
+    };
+    if (!rebuilt.rating || !Array.isArray(rebuilt.rating.items)) {
+      rebuilt.rating = calculateRating({ nutriments: rebuilt.nutriments || {} });
+    }
+    return rebuilt;
+  });
   renderCatalog(currentItems);
 }
 
