@@ -16,12 +16,14 @@ const ratingBox = document.getElementById("ratingBox");
 const historyList = document.getElementById("historyList");
 const clearHistoryBtn = document.getElementById("clearHistoryBtn");
 const connectionBadge = document.getElementById("connectionBadge");
+const switchCameraBtn = document.getElementById("switchCameraBtn");
 const torchBtn = document.getElementById("torchBtn");
 const barcodeFile = document.getElementById("barcodeFile");
 
 let html5QrCode = null;
 let isScanning = false;
 let availableCameras = [];
+let currentCameraIndex = 0;
 let currentTrack = null;
 let torchEnabled = false;
 let currentProductForAnalysis = null;
@@ -119,6 +121,7 @@ async function startScanner() {
   readerWrap.classList.remove("hidden");
   startScanBtn.classList.add("hidden");
   stopScanBtn.classList.remove("hidden");
+  switchCameraBtn.classList.add("hidden");
   torchBtn.classList.add("hidden");
   setStatus("Uruchamiam aparat...");
 
@@ -155,62 +158,35 @@ async function startScanner() {
     }
   };
 
-  const onScanSuccess = async decodedText => {
-    const code = sanitizeBarcode(decodedText);
-    if (code) {
-      await stopScanner(false);
-      await fetchProduct(code);
-    }
-  };
-
   try {
-    try {
-      await html5QrCode.start(getCameraConfig(), config, onScanSuccess, () => {});
-    } catch (firstError) {
-      console.warn("Nie udało się uruchomić wybranej tylnej kamery, próbuję environment fallback", firstError);
-      try {
-        await html5QrCode.start(getFallbackCameraConfig(), config, onScanSuccess, () => {});
-      } catch (secondError) {
-        console.warn("Environment fallback też nie zadziałał, próbuję dowolną dostępną kamerę", secondError);
-        await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
-      }
-    }
+    await html5QrCode.start(
+      getCameraConfig(),
+      config,
+      async decodedText => {
+        const code = sanitizeBarcode(decodedText);
+        if (code) {
+          await stopScanner(false);
+          await fetchProduct(code);
+        }
+      },
+      () => {}
+    );
     isScanning = true;
-    setStatus("Skaner działa. Aplikacja automatycznie próbuje użyć tylnej kamery. Powoli przybliż/oddal kod, aż będzie ostry.");
+    switchCameraBtn.classList.toggle("hidden", availableCameras.length < 2);
+    setStatus("Skaner działa. Powoli przybliż/oddal kod, aż będzie ostry i dobrze oświetlony.");
     prepareTorchButton();
   } catch (error) {
     console.error(error);
     await stopScanner(false);
-    setStatus("Nie udało się uruchomić kamery. Sprawdź zgodę na aparat, HTTPS oraz czy inna aplikacja nie używa kamery.", true);
+    setStatus("Nie udało się uruchomić aparatu. Użyj HTTPS i pozwól stronie na dostęp do kamery albo wpisz kod ręcznie.", true);
   }
 }
 
 function getCameraConfig() {
-  // Bez przycisku zmiany kamery: aplikacja sama próbuje wybrać tylną kamerę.
-  if (Array.isArray(availableCameras) && availableCameras.length) {
-    const rearCamera = availableCameras.find(camera => {
-      const label = String(camera.label || "").toLowerCase();
-      return label.includes("back") ||
-             label.includes("rear") ||
-             label.includes("environment") ||
-             label.includes("tył") ||
-             label.includes("tylna") ||
-             label.includes("kamera 0");
-    });
-
-    if (rearCamera?.id) return rearCamera.id;
-
-    // Jeżeli telefon nie ujawnia nazw kamer przed zgodą, zwykle ostatnia kamera jest tylna.
-    const lastCamera = availableCameras[availableCameras.length - 1];
-    if (lastCamera?.id) return lastCamera.id;
+  if (availableCameras.length) {
+    currentCameraIndex = Math.min(currentCameraIndex, availableCameras.length - 1);
+    return availableCameras[currentCameraIndex].id;
   }
-
-  return { facingMode: "environment" };
-}
-
-function getFallbackCameraConfig() {
-  // Awaryjnie pozwalamy przeglądarce wybrać kamerę, żeby obraz w ogóle się pojawił.
-  // Nadal nie pokazujemy przycisku zmiany kamery.
   return { facingMode: "environment" };
 }
 
@@ -218,6 +194,13 @@ function calculateQrbox(viewfinderWidth, viewfinderHeight) {
   const width = Math.floor(Math.min(viewfinderWidth * 0.92, 620));
   const height = Math.floor(Math.min(viewfinderHeight * 0.42, 260));
   return { width: Math.max(width, 260), height: Math.max(height, 120) };
+}
+
+async function switchCamera() {
+  if (availableCameras.length < 2) return;
+  currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+  await stopScanner(false);
+  await startScanner();
 }
 
 async function prepareTorchButton() {
@@ -287,6 +270,7 @@ async function stopScanner(message = true) {
   readerWrap.classList.add("hidden");
   startScanBtn.classList.remove("hidden");
   stopScanBtn.classList.add("hidden");
+  switchCameraBtn.classList.add("hidden");
   torchBtn.classList.add("hidden");
   if (message) setStatus("Skaner zatrzymany.");
 }
@@ -319,6 +303,7 @@ function renderHistory() {
 
 startScanBtn.addEventListener("click", startScanner);
 stopScanBtn.addEventListener("click", () => stopScanner(true));
+switchCameraBtn.addEventListener("click", switchCamera);
 torchBtn.addEventListener("click", toggleTorch);
 barcodeFile.addEventListener("change", event => scanImageFile(event.target.files?.[0]));
 searchBtn.addEventListener("click", () => fetchProduct(barcodeInput.value));
