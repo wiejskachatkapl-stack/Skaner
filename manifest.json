@@ -1,13 +1,25 @@
 {
-  "name": "Skaner produktów",
+  "name": "Skaner Produktów KuchnJA",
   "short_name": "Skaner",
+  "description": "Prosta PWA do skanowania kodów kreskowych i sprawdzania wartości odżywczych.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#eef7f0",
-  "theme_color": "#16a34a",
-  "description": "Prosty skaner produktów z wartościami odżywczymi.",
+  "background_color": "#eef7ef",
+  "theme_color": "#1f8a4c",
+  "orientation": "portrait",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

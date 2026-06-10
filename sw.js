@@ -1,5 +1,5 @@
-const CACHE_NAME = "skaner-produktow-v1002";
-const ASSETS = [
+const CACHE_NAME = "skaner-produktow-v1001";
+const CORE_ASSETS = [
   "./",
   "./index.html",
   "./style.css",
@@ -9,23 +9,35 @@ const ASSETS = [
   "./icons/icon-512.png"
 ];
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS)));
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
+self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+    caches.keys().then(keys => Promise.all(keys.map(key => {
+      if (key !== CACHE_NAME) return caches.delete(key);
+    })))
   );
   self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  if (url.origin.includes("openfoodfacts.org") || url.origin.includes("unpkg.com") || url.origin.includes("cdn.jsdelivr.net")) {
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+self.addEventListener("fetch", event => {
+  const request = event.request;
+
+  if (request.url.includes("openfoodfacts.org")) {
+    event.respondWith(fetch(request).catch(() => new Response(JSON.stringify({ status: 0 }), {
+      headers: { "Content-Type": "application/json" }
+    })));
     return;
   }
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+
+  event.respondWith(
+    caches.match(request).then(cached => cached || fetch(request).then(response => {
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      return response;
+    }).catch(() => caches.match("./index.html")))
+  );
 });

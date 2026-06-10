@@ -1,409 +1,439 @@
-const VERSION = "v1002";
-const OFF_BASE = "https://world.openfoodfacts.org/api/v2/product/";
-const FIELDS = [
+const VERSION = "SKANER PRODUKTÓW v1001";
+const API_BASE = "https://world.openfoodfacts.org/api/v2/product/";
+const API_FIELDS = [
   "code",
   "product_name",
-  "generic_name",
   "brands",
-  "quantity",
+  "image_front_small_url",
   "nutriments",
+  "ingredients_text_pl",
   "ingredients_text",
   "allergens",
   "allergens_tags",
-  "image_front_small_url"
+  "nutriscore_grade"
 ].join(",");
 
-const $ = (id) => document.getElementById(id);
-const barcodeInput = $("barcodeInput");
-const checkBtn = $("checkBtn");
-const resultCard = $("resultCard");
-const productName = $("productName");
-const productMeta = $("productMeta");
-const scoreBadge = $("scoreBadge");
-const nutritionGrid = $("nutritionGrid");
-const ingredientsText = $("ingredientsText");
-const allergensText = $("allergensText");
-const notFoundBox = $("notFoundBox");
-const manualProductCard = $("manualProductCard");
-const historyList = $("historyList");
-const clearHistoryBtn = $("clearHistoryBtn");
-
-const startScanBtn = $("startScanBtn");
-const stopScanBtn = $("stopScanBtn");
-const switchCameraBtn = $("switchCameraBtn");
-
-const ocrImageInput = $("ocrImageInput");
-const readDigitsBtn = $("readDigitsBtn");
-const ocrStatus = $("ocrStatus");
-const ocrPreviewWrap = $("ocrPreviewWrap");
-const ocrPreview = $("ocrPreview");
-
-const saveManualBtn = $("saveManualBtn");
+const startScanBtn = document.getElementById("startScanBtn");
+const stopScanBtn = document.getElementById("stopScanBtn");
+const searchBtn = document.getElementById("searchBtn");
+const barcodeInput = document.getElementById("barcodeInput");
+const statusEl = document.getElementById("status");
+const readerWrap = document.getElementById("readerWrap");
+const resultCard = document.getElementById("resultCard");
+const productImage = document.getElementById("productImage");
+const productName = document.getElementById("productName");
+const productBrand = document.getElementById("productBrand");
+const productCode = document.getElementById("productCode");
+const nutritionGrid = document.getElementById("nutritionGrid");
+const ingredientsText = document.getElementById("ingredientsText");
+const allergensText = document.getElementById("allergensText");
+const ratingBox = document.getElementById("ratingBox");
+const historyList = document.getElementById("historyList");
+const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+const connectionBadge = document.getElementById("connectionBadge");
+const switchCameraBtn = document.getElementById("switchCameraBtn");
+const torchBtn = document.getElementById("torchBtn");
+const barcodeFile = document.getElementById("barcodeFile");
 
 let html5QrCode = null;
-let cameras = [];
+let isScanning = false;
+let availableCameras = [];
 let currentCameraIndex = 0;
-let lastCode = "";
-let selectedOcrImage = null;
+let currentTrack = null;
+let torchEnabled = false;
 
-function cleanCode(value) {
-  return String(value || "").replace(/\D/g, "").trim();
+const nutritionMap = [
+  ["Energia", "energy-kcal_100g", "kcal"],
+  ["Tłuszcz", "fat_100g", "g"],
+  ["Kwasy nasycone", "saturated-fat_100g", "g"],
+  ["Węglowodany", "carbohydrates_100g", "g"],
+  ["Cukry", "sugars_100g", "g"],
+  ["Błonnik", "fiber_100g", "g"],
+  ["Białko", "proteins_100g", "g"],
+  ["Sól", "salt_100g", "g"]
+];
+
+function setStatus(message, isError = false) {
+  statusEl.textContent = message;
+  statusEl.style.color = isError ? "#d64545" : "#66746b";
 }
 
-function findBarcodeCandidate(text) {
-  const digitsOnly = String(text || "").replace(/\D/g, "");
-  const groups = String(text || "").match(/\d[\d\s\-]{6,20}\d/g) || [];
-  const candidates = [];
-  for (const group of groups) {
-    const cleaned = cleanCode(group);
-    if (cleaned.length >= 8 && cleaned.length <= 14) candidates.push(cleaned);
+function sanitizeBarcode(value) {
+  return String(value || "").replace(/[^0-9]/g, "").trim();
+}
+
+function formatValue(value, unit) {
+  if (value === undefined || value === null || value === "") return "brak";
+  const number = Number(value);
+  if (Number.isFinite(number)) {
+    return `${String(Math.round(number * 100) / 100).replace(".", ",")} ${unit}`;
   }
-  for (let len of [13, 14, 12, 8]) {
-    if (digitsOnly.length >= len) {
-      for (let i = 0; i <= digitsOnly.length - len; i++) {
-        candidates.push(digitsOnly.slice(i, i + len));
-      }
-    }
+  return `${value} ${unit}`;
+}
+
+function updateConnectionBadge() {
+  if (navigator.onLine) {
+    connectionBadge.textContent = "ONLINE";
+    connectionBadge.classList.remove("offline");
+  } else {
+    connectionBadge.textContent = "OFFLINE";
+    connectionBadge.classList.add("offline");
   }
-  return candidates.find((c) => c.length >= 8 && c.length <= 14) || "";
 }
 
-function getLocalProducts() {
-  try { return JSON.parse(localStorage.getItem("localProducts") || "{}"); }
-  catch { return {}; }
-}
-
-function setLocalProducts(data) {
-  localStorage.setItem("localProducts", JSON.stringify(data));
-}
-
-function getHistory() {
-  try { return JSON.parse(localStorage.getItem("scanHistory") || "[]"); }
-  catch { return []; }
-}
-
-function setHistory(items) {
-  localStorage.setItem("scanHistory", JSON.stringify(items.slice(0, 20)));
-}
-
-function addHistory(product) {
-  const code = product.code || lastCode;
-  const item = {
-    code,
-    name: product.product_name || product.name || "Produkt bez nazwy",
-    brand: product.brands || product.brand || "",
-    date: new Date().toLocaleString("pl-PL")
-  };
-  const rest = getHistory().filter((x) => x.code !== code);
-  setHistory([item, ...rest]);
-  renderHistory();
-}
-
-function renderHistory() {
-  const items = getHistory();
-  historyList.innerHTML = "";
-  if (!items.length) {
-    historyList.innerHTML = `<p class="hint">Brak ostatnich skanów.</p>`;
+async function fetchProduct(barcode) {
+  const cleanCode = sanitizeBarcode(barcode);
+  if (!cleanCode || cleanCode.length < 8) {
+    setStatus("Wpisz poprawny kod kreskowy. Kod powinien mieć minimum 8 cyfr.", true);
     return;
   }
-  for (const item of items) {
-    const el = document.createElement("div");
-    el.className = "history-item";
-    el.innerHTML = `<strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.brand || "")} • ${escapeHtml(item.code)} • ${escapeHtml(item.date)}</span>`;
-    el.addEventListener("click", () => {
-      barcodeInput.value = item.code;
-      lookupProduct(item.code);
-    });
-    historyList.appendChild(el);
-  }
-}
 
-function escapeHtml(text) {
-  return String(text || "").replace(/[&<>'"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#039;","\"":"&quot;"}[c]));
-}
-
-function n(nutriments, key) {
-  const value = nutriments?.[key];
-  if (value === undefined || value === null || value === "") return null;
-  return Number(value);
-}
-
-function fmt(value, unit = "g") {
-  if (value === null || Number.isNaN(value)) return "brak";
-  return `${String(Math.round(value * 100) / 100).replace(".", ",")} ${unit}`;
-}
-
-function scoreProduct(nutriments) {
-  let score = 10;
-  const kcal = n(nutriments, "energy-kcal_100g");
-  const sugars = n(nutriments, "sugars_100g");
-  const salt = n(nutriments, "salt_100g");
-  const satFat = n(nutriments, "saturated-fat_100g");
-  const fiber = n(nutriments, "fiber_100g");
-  const protein = n(nutriments, "proteins_100g");
-
-  if (kcal !== null && kcal > 450) score -= 2;
-  else if (kcal !== null && kcal > 300) score -= 1;
-  if (sugars !== null && sugars > 22.5) score -= 2;
-  else if (sugars !== null && sugars > 10) score -= 1;
-  if (salt !== null && salt > 1.5) score -= 2;
-  else if (salt !== null && salt > 0.8) score -= 1;
-  if (satFat !== null && satFat > 5) score -= 1;
-  if (fiber !== null && fiber >= 3) score += 1;
-  if (protein !== null && protein >= 10) score += 1;
-  return Math.max(1, Math.min(10, score));
-}
-
-function normalizeProductFromManual(code) {
-  return {
-    code,
-    product_name: $("manualName").value.trim() || "Produkt własny",
-    brands: $("manualBrand").value.trim(),
-    ingredients_text: $("manualIngredients").value.trim(),
-    allergens: "",
-    nutriments: {
-      "energy-kcal_100g": parseNumber($("manualKcal").value),
-      "fat_100g": parseNumber($("manualFat").value),
-      "carbohydrates_100g": parseNumber($("manualCarbs").value),
-      "sugars_100g": parseNumber($("manualSugars").value),
-      "fiber_100g": parseNumber($("manualFiber").value),
-      "proteins_100g": parseNumber($("manualProtein").value),
-      "salt_100g": parseNumber($("manualSalt").value)
-    },
-    source: "local"
-  };
-}
-
-function parseNumber(value) {
-  const cleaned = String(value || "").replace(",", ".").replace(/[^0-9.\-]/g, "");
-  const num = Number(cleaned);
-  return Number.isFinite(num) ? num : null;
-}
-
-function renderProduct(product, source = "online") {
-  resultCard.classList.remove("hidden");
-  manualProductCard.classList.add("hidden");
-  notFoundBox.classList.add("hidden");
-
-  const nutriments = product.nutriments || {};
-  const score = scoreProduct(nutriments);
-  productName.textContent = product.product_name || product.generic_name || "Produkt bez nazwy";
-  productMeta.textContent = `${product.brands || "brak marki"} • kod: ${product.code || lastCode} • ${source === "local" ? "baza lokalna" : "Open Food Facts"}`;
-  scoreBadge.textContent = `${score}/10`;
-  scoreBadge.style.borderColor = score >= 7 ? "#bbf7d0" : score >= 4 ? "#fde68a" : "#fecaca";
-  scoreBadge.style.background = score >= 7 ? "#f0fdf4" : score >= 4 ? "#fffbeb" : "#fef2f2";
-
-  const items = [
-    ["Kalorie", fmt(n(nutriments, "energy-kcal_100g"), "kcal")],
-    ["Tłuszcz", fmt(n(nutriments, "fat_100g"))],
-    ["Kwasy nasycone", fmt(n(nutriments, "saturated-fat_100g"))],
-    ["Węglowodany", fmt(n(nutriments, "carbohydrates_100g"))],
-    ["Cukry", fmt(n(nutriments, "sugars_100g"))],
-    ["Błonnik", fmt(n(nutriments, "fiber_100g"))],
-    ["Białko", fmt(n(nutriments, "proteins_100g"))],
-    ["Sól", fmt(n(nutriments, "salt_100g"))]
-  ];
-
-  nutritionGrid.innerHTML = items.map(([label, value]) => `<div class="nutrition-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
-  ingredientsText.textContent = product.ingredients_text || "brak danych";
-  allergensText.textContent = product.allergens || (product.allergens_tags || []).join(", ") || "brak danych";
-  addHistory(product);
-  resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function renderNotFound(code) {
-  resultCard.classList.remove("hidden");
-  notFoundBox.classList.remove("hidden");
-  manualProductCard.classList.remove("hidden");
-  productName.textContent = "Nie znaleziono produktu";
-  productMeta.textContent = `kod: ${code}`;
-  scoreBadge.textContent = "-";
-  nutritionGrid.innerHTML = "";
-  ingredientsText.textContent = "brak danych";
-  allergensText.textContent = "brak danych";
-  resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-async function lookupProduct(rawCode) {
-  const code = cleanCode(rawCode);
-  if (!code || code.length < 8) {
-    alert("Wpisz lub odczytaj poprawny kod EAN. Kod ma zwykle 8–14 cyfr.");
-    return;
-  }
-  lastCode = code;
-  barcodeInput.value = code;
-  checkBtn.disabled = true;
-  checkBtn.textContent = "Sprawdzam...";
+  barcodeInput.value = cleanCode;
+  setStatus("Szukam produktu w Open Food Facts...");
 
   try {
-    const local = getLocalProducts();
-    if (local[code]) {
-      renderProduct(local[code], "local");
+    const url = `${API_BASE}${encodeURIComponent(cleanCode)}.json?fields=${encodeURIComponent(API_FIELDS)}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Błąd API: ${response.status}`);
+
+    const data = await response.json();
+    if (!data || data.status !== 1 || !data.product) {
+      resultCard.classList.add("hidden");
+      setStatus("Nie znaleziono produktu. W kolejnej wersji dodamy ręczne dopisywanie do własnej bazy.", true);
       return;
     }
 
-    const url = `${OFF_BASE}${encodeURIComponent(code)}.json?fields=${FIELDS}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Błąd pobierania danych");
-    const data = await res.json();
-    if (data.status === 1 && data.product) {
-      renderProduct({ ...data.product, code }, "online");
-    } else {
-      renderNotFound(code);
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Nie udało się pobrać danych. Sprawdź internet albo wpisz produkt ręcznie.");
-  } finally {
-    checkBtn.disabled = false;
-    checkBtn.textContent = "Sprawdź";
+    showProduct(data.product, cleanCode);
+    saveToHistory(data.product, cleanCode);
+    renderHistory();
+    setStatus("Produkt znaleziony.");
+  } catch (error) {
+    console.error(error);
+    setStatus("Nie udało się pobrać danych. Sprawdź internet albo spróbuj później.", true);
   }
+}
+
+function showProduct(product, barcode) {
+  const name = product.product_name || "Produkt bez nazwy";
+  const brand = product.brands || "Marka nieznana";
+
+  productName.textContent = name;
+  productBrand.textContent = brand;
+  productCode.textContent = `Kod: ${barcode}`;
+
+  if (product.image_front_small_url) {
+    productImage.src = product.image_front_small_url;
+    productImage.classList.remove("hidden");
+  } else {
+    productImage.classList.add("hidden");
+  }
+
+  nutritionGrid.innerHTML = "";
+  const nutriments = product.nutriments || {};
+  nutritionMap.forEach(([label, key, unit]) => {
+    const item = document.createElement("div");
+    item.className = "nutrition-item";
+    item.innerHTML = `<span>${label}</span><strong>${formatValue(nutriments[key], unit)}</strong>`;
+    nutritionGrid.appendChild(item);
+  });
+
+  ingredientsText.textContent = product.ingredients_text_pl || product.ingredients_text || "Brak danych.";
+  allergensText.textContent = formatAllergens(product);
+  renderRating(product);
+  resultCard.classList.remove("hidden");
+}
+
+function formatAllergens(product) {
+  if (product.allergens) return product.allergens.replaceAll("en:", "").replaceAll(",", ", ");
+  if (Array.isArray(product.allergens_tags) && product.allergens_tags.length) {
+    return product.allergens_tags.map(a => a.replace("en:", "")).join(", ");
+  }
+  return "Brak danych.";
+}
+
+function renderRating(product) {
+  const n = product.nutriments || {};
+  const sugar = Number(n["sugars_100g"]);
+  const salt = Number(n["salt_100g"]);
+  const saturated = Number(n["saturated-fat_100g"]);
+  const fiber = Number(n["fiber_100g"]);
+  const protein = Number(n["proteins_100g"]);
+
+  let points = 5;
+  const notes = [];
+
+  if (Number.isFinite(sugar)) {
+    if (sugar > 15) { points -= 2; notes.push("dużo cukru"); }
+    else if (sugar > 7) { points -= 1; notes.push("średnio cukru"); }
+    else { points += 1; notes.push("mało cukru"); }
+  }
+
+  if (Number.isFinite(salt)) {
+    if (salt > 1.5) { points -= 2; notes.push("dużo soli"); }
+    else if (salt > 0.7) { points -= 1; notes.push("średnio soli"); }
+    else { points += 1; notes.push("mało soli"); }
+  }
+
+  if (Number.isFinite(saturated) && saturated > 5) {
+    points -= 1;
+    notes.push("więcej tłuszczów nasyconych");
+  }
+
+  if (Number.isFinite(fiber) && fiber >= 3) {
+    points += 1;
+    notes.push("dobry błonnik");
+  }
+
+  if (Number.isFinite(protein) && protein >= 10) {
+    points += 1;
+    notes.push("sporo białka");
+  }
+
+  points = Math.max(1, Math.min(10, points));
+
+  let label = "Średni wybór";
+  let className = "rating-mid";
+  if (points >= 8) { label = "Dobry wybór"; className = "rating-good"; }
+  if (points <= 4) { label = "Słaby wybór"; className = "rating-bad"; }
+
+  ratingBox.className = `rating-box ${className}`;
+  ratingBox.textContent = `Ocena uproszczona: ${points}/10 — ${label}${notes.length ? " — " + notes.join(", ") : ""}`;
 }
 
 async function startScanner() {
-  if (!window.Html5Qrcode) {
-    alert("Biblioteka skanera nie załadowała się. Spróbuj odświeżyć stronę.");
+  if (isScanning) return;
+  if (typeof Html5Qrcode === "undefined") {
+    setStatus("Nie udało się załadować skanera. Sprawdź internet albo wpisz kod ręcznie.", true);
     return;
   }
-  try {
-    if (!html5QrCode) html5QrCode = new Html5Qrcode("reader", { verbose: false });
-    cameras = await Html5Qrcode.getCameras();
-    if (!cameras.length) {
-      alert("Nie znaleziono kamery.");
-      return;
-    }
-    const cameraId = cameras[currentCameraIndex]?.id || cameras[0].id;
-    startScanBtn.disabled = true;
-    stopScanBtn.disabled = false;
-    switchCameraBtn.disabled = cameras.length < 2;
 
+  readerWrap.classList.remove("hidden");
+  startScanBtn.classList.add("hidden");
+  stopScanBtn.classList.remove("hidden");
+  switchCameraBtn.classList.add("hidden");
+  torchBtn.classList.add("hidden");
+  setStatus("Uruchamiam aparat...");
+
+  try {
+    availableCameras = await Html5Qrcode.getCameras();
+  } catch (error) {
+    console.warn("Nie udało się pobrać listy kamer", error);
+    availableCameras = [];
+  }
+
+  const cameraConfig = getCameraConfig();
+  html5QrCode = new Html5Qrcode("reader", {
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39
+    ],
+    verbose: false,
+    experimentalFeatures: {
+      useBarCodeDetectorIfSupported: true
+    }
+  });
+
+  const config = {
+    fps: 18,
+    qrbox: calculateQrbox,
+    aspectRatio: 1.7777778,
+    disableFlip: true,
+    rememberLastUsedCamera: true,
+    videoConstraints: {
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+      focusMode: "continuous"
+    }
+  };
+
+  try {
     await html5QrCode.start(
-      cameraId,
-      {
-        fps: 18,
-        qrbox: (viewfinderWidth, viewfinderHeight) => {
-          const width = Math.floor(viewfinderWidth * 0.9);
-          const height = Math.floor(Math.min(viewfinderHeight * 0.45, 240));
-          return { width, height };
-        },
-        aspectRatio: 1.777,
-        disableFlip: false,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39
-        ]
-      },
+      cameraConfig,
+      config,
       async (decodedText) => {
-        const code = cleanCode(decodedText);
-        if (code.length >= 8) {
-          await stopScanner();
-          lookupProduct(code);
+        const code = sanitizeBarcode(decodedText);
+        if (code) {
+          await stopScanner(false);
+          await fetchProduct(code);
         }
       },
       () => {}
     );
-  } catch (err) {
-    console.error(err);
-    alert("Nie udało się uruchomić kamery. Na komputerze użyj wpisania kodu albo zdjęcia cyfr.");
-    startScanBtn.disabled = false;
-    stopScanBtn.disabled = true;
+    isScanning = true;
+    switchCameraBtn.classList.toggle("hidden", availableCameras.length < 2);
+    setStatus("Skaner działa. Powoli przybliż/oddal kod, aż będzie ostry i dobrze oświetlony.");
+    prepareTorchButton();
+  } catch (error) {
+    console.error(error);
+    await stopScanner(false);
+    setStatus("Nie udało się uruchomić aparatu. Użyj HTTPS i pozwól stronie na dostęp do kamery albo wpisz kod ręcznie.", true);
   }
 }
 
-async function stopScanner() {
-  try {
-    if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop();
-  } catch (err) { console.warn(err); }
-  startScanBtn.disabled = false;
-  stopScanBtn.disabled = true;
-  switchCameraBtn.disabled = true;
+function getCameraConfig() {
+  if (availableCameras.length) {
+    currentCameraIndex = Math.min(currentCameraIndex, availableCameras.length - 1);
+    return availableCameras[currentCameraIndex].id;
+  }
+  return { facingMode: "environment" };
+}
+
+function calculateQrbox(viewfinderWidth, viewfinderHeight) {
+  const width = Math.floor(Math.min(viewfinderWidth * 0.92, 620));
+  const height = Math.floor(Math.min(viewfinderHeight * 0.42, 260));
+  return { width: Math.max(width, 260), height: Math.max(height, 120) };
 }
 
 async function switchCamera() {
-  if (!cameras.length) return;
-  await stopScanner();
-  currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+  if (availableCameras.length < 2) return;
+  currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+  await stopScanner(false);
   await startScanner();
 }
 
-async function readDigitsFromImage() {
-  if (!selectedOcrImage) return;
-  if (!window.Tesseract) {
-    alert("Biblioteka OCR nie załadowała się. Odśwież stronę i spróbuj ponownie.");
-    return;
-  }
-  readDigitsBtn.disabled = true;
-  ocrStatus.textContent = "Odczytuję cyfry... To może potrwać kilka sekund.";
+async function prepareTorchButton() {
+  torchEnabled = false;
+  torchBtn.textContent = "Latarka";
+  torchBtn.classList.add("hidden");
   try {
-    const result = await Tesseract.recognize(selectedOcrImage, "eng", {
-      logger: (m) => {
-        if (m.status === "recognizing text") {
-          ocrStatus.textContent = `Odczytuję cyfry... ${Math.round((m.progress || 0) * 100)}%`;
-        }
-      }
-    });
-    const text = result?.data?.text || "";
-    const code = findBarcodeCandidate(text);
-    if (code) {
-      ocrStatus.textContent = `Odczytano kod: ${code}`;
-      barcodeInput.value = code;
-      lookupProduct(code);
-    } else {
-      ocrStatus.textContent = "Nie udało się odczytać kodu. Przytnij zdjęcie bliżej samych cyfr albo wpisz kod ręcznie.";
+    const stream = html5QrCode?.getRunningTrackSettings ? null : null;
+    const video = document.querySelector("#reader video");
+    currentTrack = video?.srcObject?.getVideoTracks?.()[0] || null;
+    const capabilities = currentTrack?.getCapabilities?.();
+    if (capabilities && capabilities.torch) {
+      torchBtn.classList.remove("hidden");
     }
-  } catch (err) {
-    console.error(err);
-    ocrStatus.textContent = "Błąd OCR. Spróbuj zrobić ostrzejsze zdjęcie cyfr.";
-  } finally {
-    readDigitsBtn.disabled = false;
+  } catch (error) {
+    console.warn("Latarka niedostępna", error);
   }
 }
 
-checkBtn.addEventListener("click", () => lookupProduct(barcodeInput.value));
-barcodeInput.addEventListener("keydown", (e) => { if (e.key === "Enter") lookupProduct(barcodeInput.value); });
-startScanBtn.addEventListener("click", startScanner);
-stopScanBtn.addEventListener("click", stopScanner);
-switchCameraBtn.addEventListener("click", switchCamera);
-
-ocrImageInput.addEventListener("change", () => {
-  const file = ocrImageInput.files?.[0];
-  selectedOcrImage = file || null;
-  readDigitsBtn.disabled = !file;
-  ocrStatus.textContent = file ? "Zdjęcie gotowe. Kliknij: Odczytaj cyfry ze zdjęcia." : "";
-  if (file) {
-    const url = URL.createObjectURL(file);
-    ocrPreview.src = url;
-    ocrPreviewWrap.classList.remove("hidden");
-  } else {
-    ocrPreviewWrap.classList.add("hidden");
+async function toggleTorch() {
+  if (!currentTrack) return;
+  try {
+    torchEnabled = !torchEnabled;
+    await currentTrack.applyConstraints({ advanced: [{ torch: torchEnabled }] });
+    torchBtn.textContent = torchEnabled ? "Zgaś latarkę" : "Latarka";
+  } catch (error) {
+    console.warn(error);
+    setStatus("Ta kamera nie pozwala sterować latarką.", true);
   }
-});
-readDigitsBtn.addEventListener("click", readDigitsFromImage);
+}
 
-saveManualBtn.addEventListener("click", () => {
-  const code = cleanCode(barcodeInput.value || lastCode);
-  if (!code) {
-    alert("Najpierw wpisz kod produktu.");
+async function scanImageFile(file) {
+  if (!file) return;
+  if (typeof Html5Qrcode === "undefined") {
+    setStatus("Nie udało się załadować czytnika. Wpisz kod ręcznie.", true);
     return;
   }
-  const product = normalizeProductFromManual(code);
-  const local = getLocalProducts();
-  local[code] = product;
-  setLocalProducts(local);
-  renderProduct(product, "local");
-  alert("Produkt zapisany lokalnie w tej przeglądarce.");
+  if (isScanning) await stopScanner(false);
+  setStatus("Odczytuję kod ze zdjęcia...");
+  const scanner = new Html5Qrcode("reader");
+  readerWrap.classList.remove("hidden");
+  try {
+    const decodedText = await scanner.scanFile(file, true);
+    const code = sanitizeBarcode(decodedText);
+    if (!code) throw new Error("Brak kodu na zdjęciu");
+    await scanner.clear();
+    await fetchProduct(code);
+  } catch (error) {
+    console.error(error);
+    try { await scanner.clear(); } catch {}
+    setStatus("Nie udało się odczytać kodu ze zdjęcia. Zrób zdjęcie ostrzej i bliżej kodu albo wpisz kod ręcznie.", true);
+  }
+}
+
+async function stopScanner(message = true) {
+  if (html5QrCode && isScanning) {
+    try {
+      await html5QrCode.stop();
+      await html5QrCode.clear();
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+  html5QrCode = null;
+  currentTrack = null;
+  torchEnabled = false;
+  isScanning = false;
+  readerWrap.classList.add("hidden");
+  startScanBtn.classList.remove("hidden");
+  stopScanBtn.classList.add("hidden");
+  switchCameraBtn.classList.add("hidden");
+  torchBtn.classList.add("hidden");
+  if (message) setStatus("Skaner zatrzymany.");
+}
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem("productScannerHistory") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveToHistory(product, barcode) {
+  const history = getHistory().filter(item => item.code !== barcode);
+  history.unshift({
+    code: barcode,
+    name: product.product_name || "Produkt bez nazwy",
+    brand: product.brands || "",
+    date: new Date().toISOString()
+  });
+  localStorage.setItem("productScannerHistory", JSON.stringify(history.slice(0, 10)));
+}
+
+function renderHistory() {
+  const history = getHistory();
+  if (!history.length) {
+    historyList.className = "history-list empty";
+    historyList.textContent = "Brak historii.";
+    return;
+  }
+
+  historyList.className = "history-list";
+  historyList.innerHTML = "";
+  history.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "history-item";
+    const left = document.createElement("div");
+    left.innerHTML = `<strong>${escapeHtml(item.name)}</strong><br><span class="muted">${escapeHtml(item.brand || "")}${item.brand ? " · " : ""}${escapeHtml(item.code)}</span>`;
+    const btn = document.createElement("button");
+    btn.className = "small-btn";
+    btn.textContent = "Pokaż";
+    btn.addEventListener("click", () => fetchProduct(item.code));
+    row.appendChild(left);
+    row.appendChild(btn);
+    historyList.appendChild(row);
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = String(text || "");
+  return div.innerHTML;
+}
+
+startScanBtn.addEventListener("click", startScanner);
+stopScanBtn.addEventListener("click", () => stopScanner(true));
+switchCameraBtn.addEventListener("click", switchCamera);
+torchBtn.addEventListener("click", toggleTorch);
+barcodeFile.addEventListener("change", (event) => scanImageFile(event.target.files?.[0]));
+searchBtn.addEventListener("click", () => fetchProduct(barcodeInput.value));
+barcodeInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") fetchProduct(barcodeInput.value);
+});
+clearHistoryBtn.addEventListener("click", () => {
+  localStorage.removeItem("productScannerHistory");
+  renderHistory();
 });
 
-clearHistoryBtn.addEventListener("click", () => {
-  if (confirm("Wyczyścić historię skanów?")) {
-    setHistory([]);
-    renderHistory();
-  }
-});
+window.addEventListener("online", updateConnectionBadge);
+window.addEventListener("offline", updateConnectionBadge);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -411,4 +441,5 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+updateConnectionBadge();
 renderHistory();
