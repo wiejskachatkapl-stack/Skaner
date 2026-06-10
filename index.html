@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#16a34a" />
+  <title>Skaner produktów v1002</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">KuchnJA • PWA</p>
+        <h1>Skaner produktów</h1>
+        <p class="subtitle">Skanuj kod, wpisz EAN ręcznie albo zrób zdjęcie cyfr pod kodem kreskowym.</p>
+      </div>
+      <span class="version">v1002</span>
+    </header>
+
+    <section class="card">
+      <h2>1. Kod produktu</h2>
+      <div class="input-row">
+        <input id="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="Wpisz kod EAN, np. 590..." />
+        <button id="checkBtn" class="primary">Sprawdź</button>
+      </div>
+      <p class="hint">Najpewniejsza metoda: wpisz cyfry spod kodu kreskowego lub użyj odczytu ze zdjęcia.</p>
+    </section>
+
+    <section class="card scanner-card">
+      <h2>2. Skanowanie aparatem</h2>
+      <div id="reader" class="reader"></div>
+      <div class="button-grid">
+        <button id="startScanBtn" class="primary">Skanuj kod aparatem</button>
+        <button id="stopScanBtn" class="secondary" disabled>Zatrzymaj</button>
+        <button id="switchCameraBtn" class="secondary" disabled>Zmień kamerę</button>
+      </div>
+      <p class="hint">Na komputerze skaner może działać słabo. Telefon zwykle łapie kod dużo lepiej.</p>
+    </section>
+
+    <section class="card ocr-card">
+      <h2>3. Odczyt cyfr ze zdjęcia</h2>
+      <p class="hint strong">Zrób zdjęcie samych cyfr pod kodem kreskowym, najlepiej równo i ostro.</p>
+      <label class="file-btn" for="ocrImageInput">Wybierz / zrób zdjęcie cyfr</label>
+      <input id="ocrImageInput" type="file" accept="image/*" capture="environment" />
+      <div id="ocrPreviewWrap" class="preview-wrap hidden">
+        <img id="ocrPreview" alt="Podgląd zdjęcia kodu" />
+      </div>
+      <button id="readDigitsBtn" class="primary" disabled>Odczytaj cyfry ze zdjęcia</button>
+      <div id="ocrStatus" class="status"></div>
+    </section>
+
+    <section id="resultCard" class="card result-card hidden">
+      <div class="result-head">
+        <div>
+          <p class="eyebrow">Wynik</p>
+          <h2 id="productName">Produkt</h2>
+          <p id="productMeta" class="meta"></p>
+        </div>
+        <div id="scoreBadge" class="score-badge">-</div>
+      </div>
+
+      <div id="notFoundBox" class="not-found hidden">
+        <h3>Nie znaleziono produktu</h3>
+        <p>Możesz wpisać wartości ręcznie i zapisać produkt w tej przeglądarce.</p>
+      </div>
+
+      <div id="nutritionGrid" class="nutrition-grid"></div>
+
+      <details id="detailsBox" class="details-box">
+        <summary>Skład i alergeny</summary>
+        <p><strong>Skład:</strong> <span id="ingredientsText">brak danych</span></p>
+        <p><strong>Alergeny:</strong> <span id="allergensText">brak danych</span></p>
+      </details>
+    </section>
+
+    <section id="manualProductCard" class="card hidden">
+      <h2>Dodaj produkt ręcznie</h2>
+      <div class="manual-grid">
+        <input id="manualName" placeholder="Nazwa produktu" />
+        <input id="manualBrand" placeholder="Marka" />
+        <input id="manualKcal" inputmode="decimal" placeholder="Kalorie kcal / 100 g" />
+        <input id="manualFat" inputmode="decimal" placeholder="Tłuszcz / 100 g" />
+        <input id="manualCarbs" inputmode="decimal" placeholder="Węglowodany / 100 g" />
+        <input id="manualSugars" inputmode="decimal" placeholder="Cukry / 100 g" />
+        <input id="manualFiber" inputmode="decimal" placeholder="Błonnik / 100 g" />
+        <input id="manualProtein" inputmode="decimal" placeholder="Białko / 100 g" />
+        <input id="manualSalt" inputmode="decimal" placeholder="Sól / 100 g" />
+      </div>
+      <textarea id="manualIngredients" placeholder="Skład produktu"></textarea>
+      <button id="saveManualBtn" class="primary">Zapisz produkt lokalnie</button>
+    </section>
+
+    <section class="card">
+      <div class="section-row">
+        <h2>Ostatnie skany</h2>
+        <button id="clearHistoryBtn" class="text-btn">Wyczyść</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+
+    <footer>SKANER PRODUKTÓW v1002</footer>
+  </main>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
