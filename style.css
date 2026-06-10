@@ -736,10 +736,3 @@ body.modal-open { overflow: hidden; }
   .product-image { width: 100%; max-width: 220px; }
   .analysis-score { text-align: left; }
 }
-
-
-/* v1009: bez przycisku zmiany kamery, start bezpośrednio na tylnej kamerze */
-#switchCameraBtn,
-.camera-switch-disabled {
-  display: none !important;
-}

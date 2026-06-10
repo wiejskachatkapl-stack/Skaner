@@ -125,6 +125,13 @@ async function startScanner() {
   torchBtn.classList.add("hidden");
   setStatus("Uruchamiam aparat...");
 
+  try {
+    availableCameras = await Html5Qrcode.getCameras();
+  } catch (error) {
+    console.warn("Nie udało się pobrać listy kamer", error);
+    availableCameras = [];
+  }
+
   html5QrCode = new Html5Qrcode("reader", {
     formatsToSupport: [
       Html5QrcodeSupportedFormats.EAN_13,
@@ -165,8 +172,8 @@ async function startScanner() {
       () => {}
     );
     isScanning = true;
-    switchCameraBtn.classList.add("hidden");
-    setStatus("Skaner działa na tylnej kamerze telefonu. Powoli przybliż/oddal kod, aż będzie ostry.");
+    switchCameraBtn.classList.toggle("hidden", availableCameras.length < 2);
+    setStatus("Skaner działa. Powoli przybliż/oddal kod, aż będzie ostry i dobrze oświetlony.");
     prepareTorchButton();
   } catch (error) {
     console.error(error);
@@ -176,8 +183,10 @@ async function startScanner() {
 }
 
 function getCameraConfig() {
-  // v1009: prosto i stabilnie — tryb environment wybiera tylną kamerę telefonu.
-  // Nie używamy listy kamer, bo na części telefonów pierwsza z listy jest przednia.
+  if (availableCameras.length) {
+    currentCameraIndex = Math.min(currentCameraIndex, availableCameras.length - 1);
+    return availableCameras[currentCameraIndex].id;
+  }
   return { facingMode: "environment" };
 }
 
@@ -188,7 +197,10 @@ function calculateQrbox(viewfinderWidth, viewfinderHeight) {
 }
 
 async function switchCamera() {
-  return;
+  if (availableCameras.length < 2) return;
+  currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+  await stopScanner(false);
+  await startScanner();
 }
 
 async function prepareTorchButton() {
