@@ -173,7 +173,7 @@ async function startScanner() {
     );
     isScanning = true;
     switchCameraBtn.classList.toggle("hidden", availableCameras.length < 2);
-    setStatus("Skaner działa. Powoli przybliż/oddal kod, aż będzie ostry i dobrze oświetlony.");
+    setStatus("Skaner działa. Kamera uruchomiona mechanizmem z wcześniejszej stabilnej wersji.");
     prepareTorchButton();
   } catch (error) {
     console.error(error);
