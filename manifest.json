@@ -1,25 +1,13 @@
 {
-  "name": "Skaner Produktów KuchnJA",
+  "name": "Skaner produktów",
   "short_name": "Skaner",
-  "description": "Prosta PWA do skanowania kodów kreskowych, zapisywania zdjęć produktów i przeglądania własnej spiżarni.",
   "start_url": "./index.html",
-  "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f2ea",
-  "theme_color": "#2d7f57",
-  "orientation": "portrait",
+  "background_color": "#eef7f0",
+  "theme_color": "#16a34a",
+  "description": "Prosty skaner produktów z wartościami odżywczymi.",
   "icons": [
-    {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

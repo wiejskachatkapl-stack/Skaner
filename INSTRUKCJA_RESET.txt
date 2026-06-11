@@ -1,0 +1,11 @@
+SKANER v1002 - CZYSTY BEZ CACHE
+
+To jest wersja awaryjna do cofnięcia projektu.
+- app.js nie rejestruje już service workera
+- sw.js czyści cache i sam się wyrejestrowuje
+- reset.html usuwa stare cache w przeglądarce
+
+Po wgraniu na GitHub:
+1. Wejdź na /Skaner/reset.html
+2. Poczekaj aż przeniesie na index.html
+3. Otwórz /Skaner/index.html?clean=1002
